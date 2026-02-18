@@ -320,9 +320,14 @@ local function setupListener()
                     if type(arg) == "string" and string.find(arg, "obtained a") then
                         
                         -- Anti duplicate
-                        if arg == LastCatchMessage then
-                            return
-                        end
+                        if arg ~= LastCatchMessage then
+    LastCatchMessage = arg
+
+    local parsed = parseFishMessage(arg)
+    if not parsed then return end
+    ...
+end
+
                         LastCatchMessage = arg
 
                         local parsed = parseFishMessage(arg)
