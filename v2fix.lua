@@ -350,9 +350,9 @@ local function setupListener()
                                 sendNotification(parsed)
                             elseif not matchedFishName then
                                 -- Fish not found in database, send notification anyway as fallback
-                                print("[✓] Kirim notifikasi (fallback):", parsed.fishName)
-                                sendNotification(parsed)
-                            else
+                             --   print("[✓] Kirim notifikasi (fallback):", parsed.fishName)
+                            --    sendNotification(parsed)
+                            end
                                 print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
                             end
                         end
