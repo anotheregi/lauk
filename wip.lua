@@ -167,7 +167,12 @@ local function sendDiscordWebhook(url, embedData, callback)
         -- Metode 4: http.request
         if not success and http and http.request then
             ok, err = pcall(function()
-                http.request(url, json)
+                http.request({
+                    Url = url,
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json"},
+                    Body = json
+                })
             end)
             if ok then
                 success = true
@@ -262,7 +267,7 @@ end
 
 
 
--- ================== KIRIM NOTIFIKASI ==================
+-- ================== SEND NOTIF ==================
 local function sendNotification(data)
     if WebhookURL == "" or not NotifierEnabled then return end
 
@@ -297,7 +302,7 @@ end
 
 -- ================== CARI REMOTE EVENT ==================
 local function findRemoteEvent(name)
-    -- Coba path standar
+    -- path standar
     local folder = ReplicatedStorage:FindFirstChild("Packages") and
                    ReplicatedStorage.Packages:FindFirstChild("_Index") and
                    ReplicatedStorage.Packages._Index:FindFirstChild("sleitnick_net@0.2.0")
@@ -325,15 +330,39 @@ local function setupListener()
                     if type(arg) == "string" and string.find(arg, "obtained a") then
                         local parsed = parseFishMessage(arg)
                         
-                        if parsed and FishData[parsed.fishName] then
-                            local tier = tonumber(FishData[parsed.fishName])
+                        -- Debug: print all parsed data
+                        print("[Debug] Parsed fish:", parsed.fishName)
+                        
+                        if parsed then
+                            -- Fix: Look up fish in FishData with exact or partial match
+                            local tier = nil
+                            local matchedFishName = nil
+                            
+                            -- Try exact match first
+                            if FishData[parsed.fishName] then
+                                tier = tonumber(FishData[parsed.fishName])
+                                matchedFishName = parsed.fishName
+                            else
+                                -- Try partial match (fish name contains the key)
+                                for fishKey, fishTier in pairs(FishData) do
+                                    if string.find(parsed.fishName, fishKey) or string.find(fishKey, parsed.fishName) then
+                                        tier = tonumber(fishTier)
+                                        matchedFishName = fishKey
+                                        break
+                                    end
+                                end
+                            end
+                            
+                            print("[Debug] Matched fish:", matchedFishName, "Tier:", tier)
+                            
                             local requiredTier = TIER[SelectedFilter]
                             
-                            -- Fix: Use >= for filtering so higher tier fish are also included
-                            -- Also handle the "All" filter
+                            -- Send notification if filter matches or "All" is selected
                             if SelectedFilter == "All" or (tier and tier >= requiredTier) then
-                                print("[✓] Ikan cocok filter:", parsed.fishName)
+                                print("[✓] Kirim notifikasi:", parsed.fishName)
                                 sendNotification(parsed)
+                            else
+                                print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
                             end
                         end
                     end
