@@ -31,18 +31,8 @@ end
 
 -- Fungsi ekstrak asset ID dari string icon
 local function extractAssetId(iconString)
-    if not iconString or type(iconString) ~= "string" then
-        return nil
-    end
-    -- Match all numbers and extract the last 10 digits (actual asset ID)
-    -- This handles cases like "rbxassetid://80927639907406" -> "8092763990"
-    local allNumbers = iconString:match("(%d+)")
-    if not allNumbers then
-        return nil
-    end
-    -- Extract last 10 digits (Roblox asset IDs are typically 10 digits)
-    local assetId = string.sub(allNumbers, -10)
-    return assetId
+    if type(iconString) ~= "string" then return nil end
+    return iconString:match("(%d+)")
 end
 
 local function scanFishData()
@@ -106,23 +96,18 @@ print("[FishNotifier] Total data ikan: " .. tableCount(FishData))
 
 -- ================== FUNGSI PARSING PESAN (REGEX DIPERBAIKI) ==================
 local function parseFishMessage(msg)
-    local username = msg:match('%[Server%]:</font></b> ([^%s]+) obtained')
+    local username = msg:match("%]: ?([^%s]+) obtained")
     if not username then return nil end
 
-    -- Ambil seluruh teks ikan + berat (escape parentheses in pattern)
-    local fullFishText, weightStr = msg:match('<b><font color="[^"]+">(.-) %(([%d%.]+)kg%)</font></b>')
+    local fullFishText, weightStr = msg:match("%](.-) %(([%d%.]+)kg%)")
     if not fullFishText then return nil end
 
     local weight = tonumber(weightStr)
 
-    -- Pisahkan mutation (ALL CAPS di depan) dan nama ikan
-    local mutation, fishName = fullFishText:match('^(%u+)%s+(.+)')
+    local mutation, fishName = fullFishText:match("^(%u+)%s+(.+)")
+    if not mutation then fishName = fullFishText end
 
-    if not mutation then
-        fishName = fullFishText
-    end
-
-    local rarityText = msg:match('with a (1 in [%d%.]+[KM]? chance!)')
+    local rarityText = msg:match("with a (1 in [%d%.]+[KM]? chance!)")
     if not rarityText then return nil end
 
     return {
@@ -133,7 +118,6 @@ local function parseFishMessage(msg)
         mutation = mutation
     }
 end
-
 
 -- ================== FUNGSI PENGIRIMAN WEBHOOK ==================
 local function sendDiscordWebhook(url, embedData, callback)
@@ -210,27 +194,18 @@ local function sendDiscordWebhook(url, embedData, callback)
 end
 --==================================
 -- ================== ICON SYSTEM (SECRET ONLY + CACHE + FALLBACK) ==================
-
 local DEFAULT_THUMBNAIL = "https://i.imgur.com/3PuhVRE.png"
 local IconCache = {}
 
-local function extractAssetId(iconString)
-    if type(iconString) ~= "string" then return nil end
-    return iconString:match("(%d+)")
-end
-
--- Fetch CDN thumbnail using executor request (NOT GetAsync)
 local function fetchThumbnailURL(assetId)
     if not assetId then return nil end
 
     local requestFunc = syn and syn.request or request or http_request
-    if not requestFunc then
-        return nil
-    end
+    if not requestFunc then return nil end
 
     local url = "https://thumbnails.roblox.com/v1/assets?assetIds="
-        .. assetId ..
-        "&size=420x420&format=Png&isCircular=false"
+        .. assetId
+        .. "&size=420x420&format=Png&isCircular=false"
 
     local response = requestFunc({
         Url = url,
@@ -263,19 +238,13 @@ local function getFishIconURL(fishName)
         return IconCache[key]
     end
 
-    local fishInfo = FishData[key]
-    if not fishInfo or not fishInfo.icon then
+    local info = FishData[key]
+    if not info or not info.icon then
         IconCache[key] = DEFAULT_THUMBNAIL
         return DEFAULT_THUMBNAIL
     end
 
-    local assetId = extractAssetId(fishInfo.icon)
-    if not assetId then
-        IconCache[key] = DEFAULT_THUMBNAIL
-        return DEFAULT_THUMBNAIL
-    end
-
-    local cdnUrl = fetchThumbnailURL(assetId)
+    local cdnUrl = fetchThumbnailURL(info.icon)
     if cdnUrl then
         IconCache[key] = cdnUrl
         return cdnUrl
@@ -284,6 +253,7 @@ local function getFishIconURL(fishName)
     IconCache[key] = DEFAULT_THUMBNAIL
     return DEFAULT_THUMBNAIL
 end
+
 -- ================== SEND NOTIF ==================
 local function sendNotification(data)
     if WebhookURL == "" or not NotifierEnabled then return end
