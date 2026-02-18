@@ -211,66 +211,74 @@ end
 --==================================
 -- ================== ICON SYSTEM (SECRET ONLY + CACHE + FALLBACK) ==================
 
-local DEFAULT_THUMBNAIL = "https://i.imgur.com/3PuhVRE.png" -- ganti jika punya icon sendiri
+local DEFAULT_THUMBNAIL = "https://i.imgur.com/3PuhVRE.png"
 local IconCache = {}
 
 local function fetchThumbnailURL(assetId)
     if not assetId then return nil end
 
-    local url = ("https://thumbnails.roblox.com/v1/assets?assetIds=%s&size=420x420&format=Png&isCircular=false"):format(assetId)
-
-    local success, json = pcall(function()
-        return HttpService:GetAsync(url)
-    end)
-
-    if not success then
+    local requestFunc = syn and syn.request or request or http_request
+    if not requestFunc then
         return nil
     end
 
-    local data = HttpService:JSONDecode(json)
+    local url = "https://thumbnails.roblox.com/v1/assets?assetIds="
+        .. assetId ..
+        "&size=420x420&format=Png&isCircular=false"
+
+    local response = requestFunc({
+        Url = url,
+        Method = "GET"
+    })
+
+    if not response or not response.Body then
+        return nil
+    end
+
+    local data = game:GetService("HttpService"):JSONDecode(response.Body)
+
     if data and data.data and #data.data > 0 then
         return data.data[1].imageUrl
     end
 
     return nil
 end
+--=======
 
 local function getFishIconURL(fishName)
-    -- Cache check
-    if IconCache[fishName] then
-        return IconCache[fishName]
+    local key = string.lower(fishName)
+
+    if IconCache[key] then
+        return IconCache[key]
     end
 
     local assetId = nil
 
-    -- Coba cari di FishData yang sudah di-scan (lebih cepat)
-    if FishData[fishName] then
-        assetId = FishData[fishName].icon
+    if FishData[key] then
+        assetId = FishData[key].icon
     else
-        -- Fallback: coba cari dengan partial match
         for fishKey, fishInfo in pairs(FishData) do
-            if string.find(fishName, fishKey) or string.find(fishKey, fishName) then
+            if string.find(key, fishKey) or string.find(fishKey, key) then
                 assetId = fishInfo.icon
                 break
             end
         end
     end
 
-    -- Jika ada assetId, ambil URL thumbnail
     if assetId then
-        local cdnUrl = fetchThumbnailURL(assetId)
-        if cdnUrl then
-            IconCache[fishName] = cdnUrl
-            return cdnUrl
+        local id = tostring(assetId):match("(%d+)")
+        if id then
+            local cdnUrl = fetchThumbnailURL(id)
+            if cdnUrl then
+                IconCache[key] = cdnUrl
+                return cdnUrl
+            end
         end
     end
 
-    -- Jika tidak ditemukan atau gagal, gunakan default
-    IconCache[fishName] = DEFAULT_THUMBNAIL
+    IconCache[key] = DEFAULT_THUMBNAIL
     return DEFAULT_THUMBNAIL
 end
-
-
 
 -- ================== SEND NOTIF ==================
 local function sendNotification(data)
