@@ -104,7 +104,8 @@ local function parseFishMessage(msg)
 
     local weight = tonumber(weightStr)
 
-    local mutation, fishName = fullFishText:match("^(%u+)%s+(.+)")
+    --local mutation, fishName = fullFishText:match("^(%u+)%s+(.+)")
+    local mutation, fishName = fullFishText:match("^(%u[%u%s]+)%s+(.+)")
     if not mutation then fishName = fullFishText end
 
     local rarityText = msg:match("with a (1 in [%d%.]+[KM]? chance!)")
@@ -307,6 +308,8 @@ local function findRemoteEvent(name)
 end
 
 -- ================== PASANG LISTENER ==================
+local LastCatchMessage = ""
+
 local function setupListener()
     for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
         if remote:IsA("RemoteEvent") then
@@ -315,6 +318,16 @@ local function setupListener()
                 
                 for _, arg in ipairs(args) do
                     if type(arg) == "string" and string.find(arg, "obtained a") then
+    
+    if arg ~= LastCatchMessage then
+    LastCatchMessage = arg
+    local parsed = parseFishMessage(arg)
+    ...
+end
+
+    
+    LastCatchMessage = arg
+                            
                         local parsed = parseFishMessage(arg)
                         
                         if parsed then
@@ -326,35 +339,34 @@ local function setupListener()
                             local matchedFishName = nil
                             
                             -- Try exact match first
-                            if FishData[parsed.fishName] then
-                                tier = FishData[parsed.fishName].tier
-                                matchedFishName = parsed.fishName
-                            else
-                                -- Try partial match (fish name contains the key)
-                                for fishKey, fishInfo in pairs(FishData) do
-                                    if string.find(parsed.fishName, fishKey) or string.find(fishKey, parsed.fishName) then
-                                        tier = fishInfo.tier
-                                        matchedFishName = fishKey
-                                        break
-                                    end
-                                end
-                            end
+                            local lookupName = string.lower(parsed.fishName)
+                            if FishData[lookupName] then
+                            tier = FishData[lookupName].tier
+                            matchedFishName = lookupName
+                           else
+    local parsedLower = string.lower(parsed.fishName)
+
+    for fishKey, fishInfo in pairs(FishData) do
+        if string.find(parsedLower, fishKey, 1, true) then
+            tier = fishInfo.tier
+            matchedFishName = fishKey
+            break
+        end
+    end
+end
+
                             
                             print("[Debug] Matched fish:", matchedFishName, "Tier:", tier)
                             
                             local requiredTier = TIER[SelectedFilter]
                             
                             -- Send notification if tier matches or if fish not found in database (fallback)
-                            if tier and tier == requiredTier then
-                                print("[✓] Kirim notifikasi:", parsed.fishName)
-                                sendNotification(parsed)
-                            elseif not matchedFishName then
-                                -- Fish not found in database, send notification anyway as fallback
-                             --   print("[✓] Kirim notifikasi (fallback):", parsed.fishName)
-                            --    sendNotification(parsed)
-                            end
-                                print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
-                            end
+if tier and tier == requiredTier then
+    print("[✓] Kirim notifikasi:", parsed.fishName)
+    sendNotification(parsed)
+else
+    print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
+end
                         end
                     end
                 end
