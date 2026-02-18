@@ -54,7 +54,7 @@ local function scanFishData()
                         local tier = module.Data.Tier
                         local icon = module.Data.Icon
                         if fishName and tier then
-                            fishData[fishName] = {
+                            fishData[string.lower(fishName)] = {
                                 tier = tonumber(tier) or 0,
                                 icon = extractAssetId(icon)
                             }
@@ -70,7 +70,7 @@ local function scanFishData()
                                     local tier = value.Tier or (value.Data and value.Data.Tier)
                                     local icon = value.Icon or (value.Data and value.Data.Icon)
                                     if fishName and tier then
-                                        fishData[fishName] = {
+                                        fishData[string.lower(fishName)] = {
                                             tier = tonumber(tier) or 0,
                                             icon = extractAssetId(icon)
                                         }
