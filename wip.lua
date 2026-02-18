@@ -4,7 +4,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local DateTime = game:GetService("DateTime")
+local TextChatService = game:GetService("TextChatService")
 local Player = Players.LocalPlayer
 
 -- ================== KONFIGURASI ==================
@@ -314,59 +314,78 @@ local function findRemoteEvent(name)
     return nil
 end
 
--- ================== PASANG LISTENER ==================
+-- ================== PASANG LISTENER (TextChatService) ==================
 local function setupListener()
-    for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-        if remote:IsA("RemoteEvent") then
-            remote.OnClientEvent:Connect(function(...)
-                local args = {...}
-                
-                for _, arg in ipairs(args) do
-                    if type(arg) == "string" and string.find(arg, "obtained a") then
-                        local parsed = parseFishMessage(arg)
-                        
-                        -- Debug: print all parsed data
-                        print("[Debug] Parsed fish:", parsed.fishName)
-                        
-                        if parsed then
-                            -- Fix: Look up fish in FishData with exact or partial match
-                            local tier = nil
-                            local matchedFishName = nil
-                            
-                            -- Try exact match first
-                            if FishData[parsed.fishName] then
-                                tier = tonumber(FishData[parsed.fishName])
-                                matchedFishName = parsed.fishName
-                            else
-                                -- Try partial match (fish name contains the key)
-                                for fishKey, fishTier in pairs(FishData) do
-                                    if string.find(parsed.fishName, fishKey) or string.find(fishKey, parsed.fishName) then
-                                        tier = tonumber(fishTier)
-                                        matchedFishName = fishKey
-                                        break
-                                    end
-                                end
-                            end
-                            
-                            print("[Debug] Matched fish:", matchedFishName, "Tier:", tier)
-                            
-                            local requiredTier = TIER[SelectedFilter]
-                            
-                            -- Send notification if filter matches or "All" is selected
-                            if SelectedFilter == "All" or (tier and tier >= requiredTier) then
-                                print("[✓] Kirim notifikasi:", parsed.fishName)
-                                sendNotification(parsed)
-                            else
-                                print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
-                            end
-                        end
-                    end
+    -- Listen to TextChatService messages (DisplaySystem)
+    local function onMessageReceived(textChatOrMessage)
+        local message = textChatOrMessage
+        -- Handle both TextChatMessage and string types
+        local messageText = ""
+        if type(textChatOrMessage) == "string" then
+            messageText = textChatOrMessage
+        elseif textChatOrMessage.Text then
+            messageText = textChatOrMessage.Text
+        else
+            return
+        end
+        
+        print("[Debug] Chat message:", messageText)
+        
+        -- Early return if message doesn't contain fish catch keywords
+        if not (string.find(messageText, "obtained a") or string.find(messageText, "caught")) then
+            return
+        end
+        
+        local parsed = parseFishMessage(messageText)
+        if not parsed then return end
+        
+        print("[Debug] Parsed fish:", parsed.fishName)
+        
+        -- Look up fish in FishData - try exact match first (fast)
+        local tier = nil
+        local matchedFishName = FishData[parsed.fishName]
+        
+        if matchedFishName then
+            tier = tonumber(matchedFishName)
+        else
+            -- Only do partial match if exact match fails (slower)
+            for fishKey, fishTier in pairs(FishData) do
+                if string.find(parsed.fishName, fishKey, 1, true) or string.find(fishKey, parsed.fishName, 1, true) then
+                    tier = tonumber(fishTier)
+                    matchedFishName = fishKey
+                    break
                 end
-            end)
+            end
+        end
+        
+        print("[Debug] Matched fish:", matchedFishName, "Tier:", tier)
+        
+        local requiredTier = TIER[SelectedFilter]
+        
+        -- Send notification if filter matches or "All" is selected
+        if SelectedFilter == "All" or (tier and tier >= requiredTier) then
+            print("[✓] Kirim notifikasi:", parsed.fishName)
+            sendNotification(parsed)
+        else
+            print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
         end
     end
 
-    print("[✓] Listener universal terpasang (Fish It mode)")
+    -- Method 1: Listen to TextChatService.MessageReceived
+    if TextChatService.MessageReceived then
+        TextChatService.MessageReceived:Connect(onMessageReceived)
+    end
+    
+    -- Method 2: Listen to TextChannels (with nil check)
+    if TextChatService.TextChannels then
+        for _, textChannel in ipairs(TextChatService.TextChannels:GetChildren()) do
+            if textChannel and textChannel.MessageReceived then
+                textChannel.MessageReceived:Connect(onMessageReceived)
+            end
+        end
+    end
+
+    print("[✓] Listener TextChatService terpasang (Fish It mode)")
 end
 
 -- ================== GUI DENGAN FILTER ==================
