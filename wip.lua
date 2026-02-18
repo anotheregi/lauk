@@ -178,28 +178,31 @@ local function sendDiscordWebhook(url, embed)
 
     local json = HttpService:JSONEncode(payload)
 
-    if request then
-        request({
-            Url = url,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = json
-        })
-    elseif http_request then
-        http_request({
-            Url = url,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = json
-        })
-    else
-        warn("[FishNotifier] Executor tidak support HTTP request.")
+    local httpRequest =
+        (syn and syn.request)
+        or (http and http.request)
+        or request
+        or http_request
+
+    if not httpRequest then
+        warn("[FishNotifier] HTTP request tidak tersedia di executor ini.")
+        return
     end
+
+    local success, response = pcall(function()
+        return httpRequest({
+            Url = url,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = json
+        })
+    end)
+
+    print("Webhook success:", success)
 end
+
 
 
 local function sendNotification(data)
@@ -255,8 +258,9 @@ local function setupListener()
     ListenerConnected = true
 
     FishRemote.OnClientEvent:Connect(function(message)
+
         if type(message) ~= "string" then return end
-        if not string.find(message, "obtained a") then return end
+        if not string.find(message, "obtained") then return end
 
         local parsed = parseFishMessage(message)
         if not parsed then return end
@@ -267,9 +271,16 @@ local function setupListener()
 
         local requiredTier = TIER[SelectedFilter]
 
+        -- DEBUG PRINT (HARUS DI DALAM FUNCTION)
+        print("Fish detected:", parsed.fishName)
+        print("Tier:", fishInfo.tier)
+        print("Required:", requiredTier)
+
         if fishInfo.tier == requiredTier then
+            print("Tier match. Sending webhook...")
             sendNotification(parsed)
         end
+
     end)
 
     print("[FishNotifier] Clean listener active.")
