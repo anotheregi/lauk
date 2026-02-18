@@ -178,10 +178,29 @@ local function sendDiscordWebhook(url, embed)
 
     local json = HttpService:JSONEncode(payload)
 
-    pcall(function()
-        HttpService:PostAsync(url, json, Enum.HttpContentType.ApplicationJson)
-    end)
+    if request then
+        request({
+            Url = url,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = json
+        })
+    elseif http_request then
+        http_request({
+            Url = url,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = json
+        })
+    else
+        warn("[FishNotifier] Executor tidak support HTTP request.")
+    end
 end
+
 
 local function sendNotification(data)
     if not NotifierEnabled or WebhookURL == "" then return end
