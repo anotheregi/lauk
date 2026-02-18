@@ -256,7 +256,7 @@ local function setupListener()
 
     FishRemote.OnClientEvent:Connect(function(message)
         if type(message) ~= "string" then return end
-        if not string.find(message, "obtained") then return end
+        if not string.find(message, "obtained a") then return end
 
         local parsed = parseFishMessage(message)
         if not parsed then return end
