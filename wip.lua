@@ -1,6 +1,6 @@
 -- =====================================================
--- FISH IT NOTIFIER - CLEAN & FAST VERSION
--- Strict Rarity Filter | Optimized | No Fallback
+-- FISH IT NOTIFIER - FINAL STABLE VERSION
+-- Optimized | Clean | Auto Remote | All Executors
 -- =====================================================
 
 -- ================== SERVICES ==================
@@ -13,24 +13,22 @@ local Player = Players.LocalPlayer
 -- ================== CONFIG ==================
 local WebhookURL = "https://discord.com/api/webhooks/1473582182718115933/WapyrLJwWEJKITU5czzSzBiqDLHD7jIlTddWhKls2msrozUCwjS427NKhaj49BhGsdu6"
 local NotifierEnabled = true
-local BotUsername = "Rayzer keren"
+local SelectedFilter = "Legendary" -- Legendary / Mythic / Secret
+
+local BotUsername = "rayzerkeren"
 local BotAvatarUrl = "https://i.imgur.com/3PuhVRE.png"
 
--- ================== FILTER ==================
-local SelectedFilter = "Legendary"
-
+-- ================== TIER MAP ==================
 local TIER = {
     Legendary = 5,
     Mythic = 6,
     Secret = 7
 }
 
--- ================== DATA STORAGE ==================
-local FishData = {}       -- [lowercaseName] = { tier = number, icon = assetId }
+-- ================== STORAGE ==================
+local FishData = {}
 local IconCache = {}
 local ListenerConnected = false
-local FishRemote = nil
-
 local DEFAULT_THUMBNAIL = "https://i.imgur.com/3PuhVRE.png"
 
 -- =====================================================
@@ -43,20 +41,19 @@ local function extractAssetId(iconString)
 end
 
 -- =====================================================
--- ================== SCAN FISH DATA ==================
+-- ================== LOAD FISH DATA ==================
 -- =====================================================
+
 local function loadFishData()
-
-    local count = 0
-
     local ItemsFolder = ReplicatedStorage:WaitForChild("Items", 10)
     if not ItemsFolder then
         warn("[FishNotifier] Items folder tidak ditemukan.")
         return false
     end
 
-    -- Tunggu sampai benar-benar ter-replicate
     repeat task.wait() until #ItemsFolder:GetDescendants() > 0
+
+    local count = 0
 
     for _, obj in ipairs(ItemsFolder:GetDescendants()) do
         if obj:IsA("ModuleScript") then
@@ -65,7 +62,6 @@ local function loadFishData()
             if ok and type(moduleData) == "table" then
 
                 local data = moduleData.Data
-
                 if type(data) == "table"
                 and data.Type == "Fish"
                 and data.Name
@@ -82,17 +78,17 @@ local function loadFishData()
         end
     end
 
-    print("[FishNotifier] Loaded:", count)
+    print("[FishNotifier] Fish Loaded:", count)
     return count > 0
 end
-
 
 -- =====================================================
 -- ================== PARSE MESSAGE ==================
 -- =====================================================
 
 local function parseFishMessage(msg)
-    local username = msg:match('%[Server%]:</font></b> ([^%s]+) obtained')
+
+    local username = msg:match("%]:</font></b> ([^%s]+) obtained")
     if not username then return nil end
 
     local fullFishText, weightStr =
@@ -100,20 +96,18 @@ local function parseFishMessage(msg)
 
     if not fullFishText then return nil end
 
-    local weight = tonumber(weightStr)
-
-    local mutation, fishName = fullFishText:match('^(%u+)%s+(.+)')
+    local mutation, fishName = fullFishText:match("^(%u+)%s+(.+)")
     if not mutation then
         fishName = fullFishText
     end
 
-    local rarityText = msg:match('with a (1 in [%d%.]+[KM]? chance!)')
+    local rarityText = msg:match("(1 in [%d%.]+[KM]? chance!)")
     if not rarityText then return nil end
 
     return {
         username = username,
         fishName = fishName,
-        weight = weight,
+        weight = tonumber(weightStr),
         rarityText = rarityText,
         mutation = mutation
     }
@@ -126,8 +120,7 @@ end
 local function fetchThumbnailURL(assetId)
     if not assetId then return nil end
 
-    local url =
-        ("https://thumbnails.roblox.com/v1/assets?assetIds=%s&size=420x420&format=Png&isCircular=false")
+    local url = ("https://thumbnails.roblox.com/v1/assets?assetIds=%s&size=420x420&format=Png&isCircular=false")
         :format(assetId)
 
     local success, response = pcall(function()
@@ -167,8 +160,9 @@ end
 -- ================== WEBHOOK ==================
 -- =====================================================
 
-local function sendDiscordWebhook(url, embed)
-    if url == "" then return end
+local function sendDiscordWebhook(embed)
+
+    if not NotifierEnabled or WebhookURL == "" then return end
 
     local payload = {
         username = BotUsername,
@@ -181,75 +175,50 @@ local function sendDiscordWebhook(url, embed)
     local httpRequest =
         (syn and syn.request)
         or (http and http.request)
-        or request
-        or http_request
+        or (request)
+        or (http_request)
+        or (fluxus and fluxus.request)
 
     if not httpRequest then
-        warn("[FishNotifier] HTTP request tidak tersedia di executor ini.")
+        warn("[FishNotifier] Executor tidak support HTTP request.")
         return
     end
 
     local success, response = pcall(function()
         return httpRequest({
-            Url = url,
+            Url = WebhookURL,
             Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
+            Headers = {["Content-Type"] = "application/json"},
             Body = json
         })
     end)
 
-    print("Webhook success:", success)
-end
-
-
-
-local function sendNotification(data)
-    if not NotifierEnabled or WebhookURL == "" then return end
-
-    local iconUrl = getFishIconURL(data.fishName)
-
-    local embed = {
-        title = "🎣 " .. SelectedFilter:upper() .. " FISH CAUGHT!",
-        color = 0x76ff7a,
-
-        thumbnail = { url = iconUrl },
-
-        fields = {
-            {name="User", value="@"..data.username, inline=true},
-            {name="Fish", value=data.fishName, inline=true},
-            {name="Mutation", value=data.mutation or "-", inline=true},
-            {name="Weight", value=data.weight.." kg", inline=true},
-            {name="Rarity", value=data.rarityText, inline=true}
-        },
-
-        footer = {
-            text = os.date("%d-%m-%Y %H:%M:%S")
-        }
-    }
-
-    sendDiscordWebhook(WebhookURL, embed)
+    print("[FishNotifier] Webhook sent:", success)
 end
 
 -- =====================================================
--- ================== LISTENER ==================
+-- ================== FIND REMOTE ==================
 -- =====================================================
 
 local function findFishRemote()
     for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-        if remote:IsA("RemoteEvent") and
-           string.find(remote.Name:lower(), "fish") then
+        if remote:IsA("RemoteEvent")
+        and string.find(remote.Name:lower(), "fish") then
             return remote
         end
     end
     return nil
 end
 
+-- =====================================================
+-- ================== LISTENER ==================
+-- =====================================================
+
 local function setupListener()
+
     if ListenerConnected then return end
 
-    FishRemote = findFishRemote()
+    local FishRemote = findFishRemote()
     if not FishRemote then
         warn("[FishNotifier] Remote fish tidak ditemukan.")
         return
@@ -265,25 +234,35 @@ local function setupListener()
         local parsed = parseFishMessage(message)
         if not parsed then return end
 
-        local cleanName = string.lower(parsed.fishName)
-        local fishInfo = FishData[cleanName]
+        local fishInfo = FishData[string.lower(parsed.fishName)]
         if not fishInfo then return end
 
         local requiredTier = TIER[SelectedFilter]
 
-        -- DEBUG PRINT (HARUS DI DALAM FUNCTION)
-        print("Fish detected:", parsed.fishName)
-        print("Tier:", fishInfo.tier)
-        print("Required:", requiredTier)
+        print("Detected:", parsed.fishName, "| Tier:", fishInfo.tier)
 
         if fishInfo.tier == requiredTier then
-            print("Tier match. Sending webhook...")
-            sendNotification(parsed)
+
+            local embed = {
+                title = "🎣 " .. SelectedFilter:upper() .. " FISH CAUGHT!",
+                color = 0x76ff7a,
+                thumbnail = {url = getFishIconURL(parsed.fishName)},
+                fields = {
+                    {name="User", value="@"..parsed.username, inline=true},
+                    {name="Fish", value=parsed.fishName, inline=true},
+                    {name="Mutation", value=parsed.mutation or "-", inline=true},
+                    {name="Weight", value=parsed.weight.." kg", inline=true},
+                    {name="Rarity", value=parsed.rarityText, inline=true}
+                },
+                footer = {text = os.date("%d-%m-%Y %H:%M:%S")}
+            }
+
+            sendDiscordWebhook(embed)
         end
 
     end)
 
-    print("[FishNotifier] Clean listener active.")
+    print("[FishNotifier] Listener active.")
 end
 
 -- =====================================================
@@ -294,7 +273,7 @@ task.spawn(function()
 
     local success = loadFishData()
     if not success then
-        warn("[FishNotifier] Data ikan kosong. Listener tidak dipasang.")
+        warn("[FishNotifier] Data kosong.")
         return
     end
 
