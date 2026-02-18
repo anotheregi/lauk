@@ -330,10 +330,10 @@ local function setupListener()
                     if type(arg) == "string" and string.find(arg, "obtained a") then
                         local parsed = parseFishMessage(arg)
                         
-                        -- Debug: print all parsed data
-                        print("[Debug] Parsed fish:", parsed.fishName)
-                        
                         if parsed then
+                            -- Debug: print all parsed data
+                            print("[Debug] Parsed fish:", parsed.fishName)
+                            
                             -- Fix: Look up fish in FishData with exact or partial match
                             local tier = nil
                             local matchedFishName = nil
@@ -358,8 +358,17 @@ local function setupListener()
                             local requiredTier = TIER[SelectedFilter]
                             
                             -- Send notification if filter matches or "All" is selected
-                            if SelectedFilter == "All" or (tier and tier >= requiredTier) then
+                            -- For "All" filter, send all notifications
+                            -- For specific filters, send if tier matches exactly or if fish not found in database (fallback)
+                            if SelectedFilter == "All" then
+                                print("[✓] Kirim notifikasi (All):", parsed.fishName)
+                                sendNotification(parsed)
+                            elseif tier and tier == requiredTier then
                                 print("[✓] Kirim notifikasi:", parsed.fishName)
+                                sendNotification(parsed)
+                            elseif not matchedFishName then
+                                -- Fish not found in database, send notification anyway as fallback
+                                print("[✓] Kirim notifikasi (fallback):", parsed.fishName)
                                 sendNotification(parsed)
                             else
                                 print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
