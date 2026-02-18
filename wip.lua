@@ -49,9 +49,18 @@ local function loadFishData()
 
     local count = 0
 
-    local ItemsFolder = ReplicatedStorage:WaitForChild("Items")
+    local ItemsFolder = ReplicatedStorage:WaitForChild("Items", 10)
+    if not ItemsFolder then
+        warn("[FishNotifier] Items folder tidak ditemukan.")
+        return false
+    end
 
-    for _, obj in ipairs(ItemsFolder:GetDescendants()) do
+    -- Tunggu sampai minimal ada 1 child
+    while #ItemsFolder:GetChildren() == 0 do
+        task.wait()
+    end
+
+    for _, obj in ipairs(ItemsFolder:GetChildren()) do
         if obj:IsA("ModuleScript") then
 
             local ok, moduleData = pcall(require, obj)
@@ -59,11 +68,7 @@ local function loadFishData()
 
                 local data = moduleData.Data
 
-                if type(data) == "table"
-                and data.Type == "Fish"
-                and data.Name
-                and data.Tier then
-
+                if data and data.Type == "Fish" then
                     FishData[string.lower(data.Name)] = {
                         tier = tonumber(data.Tier) or 0,
                         icon = extractAssetId(data.Icon)
