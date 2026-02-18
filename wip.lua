@@ -46,47 +46,45 @@ end
 -- ================== SCAN FISH DATA ==================
 -- =====================================================
 
-local function scanFishData()
-    local data = {}
-
-    local itemsFolder = ReplicatedStorage:FindFirstChild("Items")
-    if not itemsFolder then
-        warn("[FishNotifier] Folder Items tidak ditemukan.")
-        return data
-    end
-
-    local function scan(folder)
-        for _, child in ipairs(folder:GetChildren()) do
-            if child:IsA("ModuleScript") then
-                local success, module = pcall(require, child)
-                if success and type(module) == "table" then
-
-                    if module.Data and module.Data.Type == "Fish" then
-                        local name = module.Data.Name
-                        local tier = module.Data.Tier
-                        local icon = module.Data.Icon
-
-                        if name and tier then
-                            data[string.lower(name)] = {
-                                tier = tonumber(tier) or 0,
-                                icon = extractAssetId(icon)
-                            }
-                        end
+local function findFishModule()
+    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("ModuleScript") then
+            local ok, data = pcall(require, obj)
+            if ok and type(data) == "table" then
+                for name, info in pairs(data) do
+                    if type(info) == "table" and info.Tier and info.Icon then
+                        return data
                     end
                 end
-
-            elseif child:IsA("Folder") then
-                scan(child)
             end
         end
     end
-
-    scan(itemsFolder)
-    return data
+    return nil
 end
 
-FishData = scanFishData()
-print("[FishNotifier] Loaded:", #FishData)
+local function loadFishData()
+    task.wait(2) -- tunggu game load
+
+    local moduleData = findFishModule()
+    if not moduleData then
+        warn("[FishNotifier] Fish module tidak ditemukan.")
+        return
+    end
+
+    local count = 0
+
+    for fishName, info in pairs(moduleData) do
+        FishData[string.lower(fishName)] = {
+            tier = tonumber(info.Tier) or 0,
+            icon = extractAssetId(info.Icon)
+        }
+        count += 1
+    end
+
+    print("[FishNotifier] Loaded:", count)
+end
+
+loadFishData()
 
 -- =====================================================
 -- ================== PARSE MESSAGE ==================
