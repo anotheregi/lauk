@@ -45,52 +45,38 @@ end
 -- =====================================================
 -- ================== SCAN FISH DATA ==================
 -- =====================================================
-
-local function findFishModule()
-    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("ModuleScript") then
-            local ok, data = pcall(require, obj)
-            if ok and type(data) == "table" then
-                for name, info in pairs(data) do
-                    if type(info) == "table" and info.Tier and info.Icon then
-                        return data
-                    end
-                end
-            end
-        end
-    end
-    return nil
-end
-
 local function loadFishData()
-    local tries = 0
-    local moduleData
-
-    repeat
-        moduleData = findFishModule()
-        if moduleData then break end
-        tries += 1
-        task.wait(1)
-    until tries >= 10
-
-    if not moduleData then
-        warn("[FishNotifier] Fish module tidak ditemukan setelah 10 detik.")
-        return false
-    end
 
     local count = 0
 
-    for fishName, info in pairs(moduleData) do
-        FishData[string.lower(fishName)] = {
-            tier = tonumber(info.Tier) or 0,
-            icon = extractAssetId(info.Icon)
-        }
-        count += 1
+    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("ModuleScript") then
+
+            local ok, moduleData = pcall(require, obj)
+            if ok and type(moduleData) == "table" then
+
+                local data = moduleData.Data
+
+                if type(data) == "table"
+                and data.Type == "Fish"
+                and data.Name
+                and data.Tier then
+
+                    FishData[string.lower(data.Name)] = {
+                        tier = tonumber(data.Tier) or 0,
+                        icon = extractAssetId(data.Icon)
+                    }
+
+                    count += 1
+                end
+            end
+        end
     end
 
     print("[FishNotifier] Loaded:", count)
     return count > 0
 end
+
 
 -- =====================================================
 -- ================== PARSE MESSAGE ==================
