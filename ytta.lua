@@ -331,7 +331,7 @@ local function setupListener()
                             
                             -- Fix: Use >= for filtering so higher tier fish are also included
                             -- Also handle the "All" filter
-                            if SelectedFilter == "All" or (tier and tier >= requiredTier) then
+                            if SelectedFilter == "All" or (tier and tier == requiredTier) then
                                 print("[✓] Ikan cocok filter:", parsed.fishName)
                                 sendNotification(parsed)
                             end
