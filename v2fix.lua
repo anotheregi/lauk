@@ -318,57 +318,48 @@ local function setupListener()
 
                 for _, arg in ipairs(args) do
                     if type(arg) == "string" and string.find(arg, "obtained a") then
-                        
-                        -- Anti duplicate
-                        if arg ~= LastCatchMessage then
-    LastCatchMessage = arg
 
-    local parsed = parseFishMessage(arg)
-    if not parsed then return end
-    ...
-end
+    if arg ~= LastCatchMessage then
+        LastCatchMessage = arg
 
-                        LastCatchMessage = arg
+        local parsed = parseFishMessage(arg)
+        if parsed then
 
-                        local parsed = parseFishMessage(arg)
-                        if not parsed then return end
+            print("[Debug] Parsed fish:", parsed.fishName)
 
-                        print("[Debug] Parsed fish:", parsed.fishName)
+            local tier = nil
+            local matchedFishName = nil
+            local lookupName = string.lower(parsed.fishName)
 
-                        local tier = nil
-                        local matchedFishName = nil
-                        local lookupName = string.lower(parsed.fishName)
-
-                        -- Exact match
-                        if FishData[lookupName] then
-                            tier = FishData[lookupName].tier
-                            matchedFishName = lookupName
-                        else
-                            -- Partial match fallback
-                            for fishKey, fishInfo in pairs(FishData) do
-                                if string.find(lookupName, fishKey, 1, true) then
-                                    tier = fishInfo.tier
-                                    matchedFishName = fishKey
-                                    break
-                                end
-                            end
-                        end
-
-                        print("[Debug] Matched fish:", matchedFishName, "Tier:", tier)
-
-                        local requiredTier = TIER[SelectedFilter]
-
-                        if tier and tier == requiredTier then
-                            print("[✓] Kirim notifikasi:", parsed.fishName)
-                            sendNotification(parsed)
-                        else
-                            print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
-                        end
+            if FishData[lookupName] then
+                tier = FishData[lookupName].tier
+                matchedFishName = lookupName
+            else
+                for fishKey, fishInfo in pairs(FishData) do
+                    if string.find(lookupName, fishKey, 1, true) then
+                        tier = fishInfo.tier
+                        matchedFishName = fishKey
+                        break
                     end
                 end
-            end)
+            end
+
+            print("[Debug] Matched fish:", matchedFishName, "Tier:", tier)
+
+            local requiredTier = TIER[SelectedFilter]
+
+            if tier and tier == requiredTier then
+                print("[✓] Kirim notifikasi:", parsed.fishName)
+                sendNotification(parsed)
+            else
+                print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
+            end
+
         end
     end
+
+end
+
 
     print("[✓] Listener universal terpasang (Fish It mode)")
 end
