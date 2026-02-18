@@ -63,12 +63,19 @@ local function findFishModule()
 end
 
 local function loadFishData()
-    task.wait(2) -- tunggu game load
+    local tries = 0
+    local moduleData
 
-    local moduleData = findFishModule()
+    repeat
+        moduleData = findFishModule()
+        if moduleData then break end
+        tries += 1
+        task.wait(1)
+    until tries >= 10
+
     if not moduleData then
-        warn("[FishNotifier] Fish module tidak ditemukan.")
-        return
+        warn("[FishNotifier] Fish module tidak ditemukan setelah 10 detik.")
+        return false
     end
 
     local count = 0
@@ -82,9 +89,8 @@ local function loadFishData()
     end
 
     print("[FishNotifier] Loaded:", count)
+    return count > 0
 end
-
-loadFishData()
 
 -- =====================================================
 -- ================== PARSE MESSAGE ==================
@@ -259,10 +265,20 @@ end
 -- ================== START ==================
 -- =====================================================
 
-if Player then
-    setupListener()
-else
-    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
-    Player = Players.LocalPlayer
-    setupListener()
-end
+task.spawn(function()
+
+    local success = loadFishData()
+    if not success then
+        warn("[FishNotifier] Data ikan kosong. Listener tidak dipasang.")
+        return
+    end
+
+    if Player then
+        setupListener()
+    else
+        Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+        Player = Players.LocalPlayer
+        setupListener()
+    end
+
+end)
