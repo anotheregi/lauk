@@ -49,15 +49,10 @@ local function loadFishData()
 
     local count = 0
 
-    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+    local ItemsFolder = ReplicatedStorage:WaitForChild("Items")
+
+    for _, obj in ipairs(ItemsFolder:GetDescendants()) do
         if obj:IsA("ModuleScript") then
-
-            -- FILTER NAMA / PATH SUPAYA TIDAK REQUIRE SEMUA MODULE
-            local path = obj:GetFullName():lower()
-
-            if not string.find(path, "fish") then
-                continue
-            end
 
             local ok, moduleData = pcall(require, obj)
             if ok and type(moduleData) == "table" then
@@ -83,6 +78,7 @@ local function loadFishData()
     print("[FishNotifier] Loaded:", count)
     return count > 0
 end
+
 
 -- =====================================================
 -- ================== PARSE MESSAGE ==================
