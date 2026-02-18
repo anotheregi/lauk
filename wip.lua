@@ -55,6 +55,9 @@ local function loadFishData()
         return false
     end
 
+    -- Tunggu sampai benar-benar ter-replicate
+    repeat task.wait() until #ItemsFolder:GetDescendants() > 0
+
     for _, obj in ipairs(ItemsFolder:GetDescendants()) do
         if obj:IsA("ModuleScript") then
 
@@ -63,7 +66,11 @@ local function loadFishData()
 
                 local data = moduleData.Data
 
-                if data and data.Type == "Fish" and data.Name and data.Tier then
+                if type(data) == "table"
+                and data.Type == "Fish"
+                and data.Name
+                and data.Tier then
+
                     FishData[string.lower(data.Name)] = {
                         tier = tonumber(data.Tier) or 0,
                         icon = extractAssetId(data.Icon)
@@ -78,6 +85,7 @@ local function loadFishData()
     print("[FishNotifier] Loaded:", count)
     return count > 0
 end
+
 
 -- =====================================================
 -- ================== PARSE MESSAGE ==================
