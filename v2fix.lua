@@ -314,6 +314,7 @@ local function setupListener()
     for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
         if remote:IsA("RemoteEvent") then
             remote.OnClientEvent:Connect(function(...)
+                    print("[DEBUG REMOTE]", remote:GetFullName())
                 local args = {...}
 
                 for _, arg in ipairs(args) do
