@@ -332,27 +332,35 @@ end)
                                 print("[Debug] Parsed fish:", parsed.fishName)
 
                                 local tier = nil
-                                local lookupName = string.lower(parsed.fishName)
+local matchedFishName = nil
 
-                                if FishData[lookupName] then
-                                    tier = FishData[lookupName].tier
-                                else
-                                    for fishKey, fishInfo in pairs(FishData) do
-                                        if string.find(lookupName, fishKey, 1, true) then
-                                            tier = fishInfo.tier
-                                            break
-                                        end
-                                    end
-                                end
+-- Exact match
+if FishData[parsed.fishName] then
+    tier = FishData[parsed.fishName].tier
+    matchedFishName = parsed.fishName
+else
+    for fishKey, fishInfo in pairs(FishData) do
+        if string.find(parsed.fishName, fishKey) or string.find(fishKey, parsed.fishName) then
+            tier = fishInfo.tier
+            matchedFishName = fishKey
+            break
+        end
+    end
+end
+
 
                                 local requiredTier = TIER[SelectedFilter]
 
                                 if tier and tier == requiredTier then
-                                    print("[✓] Kirim notifikasi:", parsed.fishName)
-                                    sendNotification(parsed)
-                                else
-                                    print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
-                                end
+    print("[✓] Kirim notifikasi:", parsed.fishName)
+    sendNotification(parsed)
+elseif not matchedFishName then
+    print("[✓] Kirim notifikasi (fallback):", parsed.fishName)
+    sendNotification(parsed)
+else
+    print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
+end
+
                                     
                             end
                         end
