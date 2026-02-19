@@ -314,14 +314,15 @@ local function setupListener()
     for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
         if remote:IsA("RemoteEvent") then
             remote.OnClientEvent:Connect(function(...)
-                local args = {...}
+    print("REMOTE:", remote.Name)
 
-                for _, arg in ipairs(args) do
-                    if type(arg) == "string" and (
-    string.find(arg, "obtained") or
-    string.find(arg, "caught") or
-    string.find(arg, "received")
-) then
+    local args = {...}
+    for i,v in ipairs(args) do
+        print("Arg", i, typeof(v))
+        print(v)
+    end
+end)
+
 
                         if arg ~= LastCatchMessage then
                             LastCatchMessage = arg
