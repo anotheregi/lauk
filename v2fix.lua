@@ -317,7 +317,12 @@ local function setupListener()
                 local args = {...}
 
                 for _, arg in ipairs(args) do
-                    if type(arg) == "string" and string.find(arg, "obtained a") then
+                    if type(arg) == "string" and (
+    string.find(arg, "obtained") or
+    string.find(arg, "caught") or
+    string.find(arg, "received")
+) then
+
                         if arg ~= LastCatchMessage then
                             LastCatchMessage = arg
 
@@ -347,6 +352,7 @@ local function setupListener()
                                 else
                                     print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
                                 end
+                                    
                             end
                         end
                     end
