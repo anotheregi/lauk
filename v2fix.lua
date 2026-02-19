@@ -312,10 +312,6 @@ local function findRemoteEvent(name)
 end
 
 -- ================== PASANG LISTENER ==================
-local LastCatchMessage = ""
-local LastCatchTime = 0
-local COOLDOWN = 1
-
 local function setupListener()
 
     for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
@@ -326,14 +322,6 @@ local function setupListener()
 
                 for _, arg in ipairs(args) do
                     if type(arg) == "string" and string.find(arg, "obtained a", 1, true) then
-
-                        -- Anti duplicate + anti spam
-                        local now = tick()
-                        if arg == LastCatchMessage then return end
-                        if now - LastCatchTime < COOLDOWN then return end
-
-                        LastCatchMessage = arg
-                        LastCatchTime = now
 
                         local parsed = parseFishMessage(arg)
                         if not parsed then return end
@@ -346,11 +334,14 @@ local function setupListener()
                         local tier = nil
                         local lookupName = string.lower(parsed.fishName)
 
+                        -- exact match
                         if FishData[lookupName] then
                             tier = FishData[lookupName].tier
                         else
+                            -- flexible partial match
                             for fishKey, fishInfo in pairs(FishData) do
-                                if string.find(lookupName, fishKey, 1, true) then
+                                if string.find(lookupName, fishKey, 1, true)
+                                or string.find(fishKey, lookupName, 1, true) then
                                     tier = fishInfo.tier
                                     break
                                 end
@@ -373,9 +364,8 @@ local function setupListener()
         end
     end
 
-    print("[✓] Listener aktif & stabil")
+    print("[✓] Listener aktif (tanpa anti duplicate & cooldown)")
 end
-
 
 -- ================== GUI DENGAN FILTER ==================
 local function createGUI()
