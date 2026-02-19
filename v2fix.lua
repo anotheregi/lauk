@@ -314,21 +314,23 @@ end
 -- ================== PASANG LISTENER ==================
 local LastCatchMessage = ""
 local LastCatchTime = 0
-local CATCH_COOLDOWN = 1
+local COOLDOWN = 1
 
 local function setupListener()
+
     for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
         if remote:IsA("RemoteEvent") then
+
             remote.OnClientEvent:Connect(function(...)
                 local args = {...}
 
                 for _, arg in ipairs(args) do
-                    if type(arg) == "string" and string.find(arg, "obtained a") then
-                        
+                    if type(arg) == "string" and string.find(arg, "obtained a", 1, true) then
+
                         -- Anti duplicate + anti spam
                         local now = tick()
                         if arg == LastCatchMessage then return end
-                        if now - LastCatchTime < CATCH_COOLDOWN then return end
+                        if now - LastCatchTime < COOLDOWN then return end
 
                         LastCatchMessage = arg
                         LastCatchTime = now
@@ -336,51 +338,44 @@ local function setupListener()
                         local parsed = parseFishMessage(arg)
                         if not parsed then return end
 
-                        print("[Debug] Parsed fish:", parsed.fishName)
+                        print("[Debug] Parsed:", parsed.fishName)
 
-                        -------------------------------------------------
-                        -- TIER LOOKUP
-                        -------------------------------------------------
+                        --------------------------------------------------
+                        -- LOOKUP TIER (CASE SAFE)
+                        --------------------------------------------------
                         local tier = nil
-                        local matchedFishName = nil
+                        local lookupName = string.lower(parsed.fishName)
 
-                        -- Exact match
-                        if FishData[parsed.fishName] then
-                            tier = FishData[parsed.fishName].tier
-                            matchedFishName = parsed.fishName
+                        if FishData[lookupName] then
+                            tier = FishData[lookupName].tier
                         else
-                            -- Partial match
                             for fishKey, fishInfo in pairs(FishData) do
-                                if string.find(parsed.fishName, fishKey, 1, true)
-                                or string.find(fishKey, parsed.fishName, 1, true) then
+                                if string.find(lookupName, fishKey, 1, true) then
                                     tier = fishInfo.tier
-                                    matchedFishName = fishKey
                                     break
                                 end
                             end
                         end
 
-                        print("[Debug] Matched:", matchedFishName, "Tier:", tier)
-
                         local requiredTier = TIER[SelectedFilter]
 
-                        -------------------------------------------------
-                        -- SEND ONLY IF MATCH
-                        -------------------------------------------------
                         if tier and requiredTier and tier == requiredTier then
                             print("[✓] Kirim notifikasi:", parsed.fishName)
                             sendNotification(parsed)
                         else
                             print("[x] Tidak dikirim. Tier:", tier, "Filter:", requiredTier)
                         end
+
                     end
                 end
             end)
+
         end
     end
 
-    print("[✓] Listener tanpa fallback terpasang")
+    print("[✓] Listener aktif & stabil")
 end
+
 
 -- ================== GUI DENGAN FILTER ==================
 local function createGUI()
