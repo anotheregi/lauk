@@ -348,17 +348,13 @@ local function setupListener()
                             print("[Debug] Matched fish:", matchedFishName, "Tier:", tier)
                             
                             local requiredTier = TIER[SelectedFilter]
-                            
-                            -- Send notification if tier matches or if fish not found in database (fallback)
-                            if tier and tier == requiredTier then
-                                print("[✓] Kirim notifikasi:", parsed.fishName)
-                                sendNotification(parsed)
-                            elseif not matchedFishName then
-                                -- Fish not found in database, send notification anyway as fallback
-                                print("[✓] Kirim notifikasi (fallback):", parsed.fishName)
-                                sendNotification(parsed)
-                            else
-                                print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
+
+                                if tier and tier == requiredTier then
+                                    print("[✓] Kirim notifikasi:", parsed.fishName)
+                                    sendNotification(parsed)
+                                else
+                                    print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
+                                end
                             end
                         end
                     end
