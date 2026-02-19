@@ -96,19 +96,23 @@ print("[FishNotifier] Total data ikan: " .. tableCount(FishData))
 
 -- ================== FUNGSI PARSING PESAN (REGEX DIPERBAIKI) ==================
 local function parseFishMessage(msg)
-    local username = msg:match("%]: ?([^%s]+) obtained")
+    local username = msg:match('%[Server%]:</font></b> ([^%s]+) obtained')
     if not username then return nil end
 
-    local fullFishText, weightStr = msg:match("%](.-) %(([%d%.]+)kg%)")
+    -- Ambil seluruh teks ikan + berat (escape parentheses in pattern)
+    local fullFishText, weightStr = msg:match('<b><font color="[^"]+">(.-) %(([%d%.]+)kg%)</font></b>')
     if not fullFishText then return nil end
 
     local weight = tonumber(weightStr)
 
-    --local mutation, fishName = fullFishText:match("^(%u+)%s+(.+)")
-    local mutation, fishName = fullFishText:match("^(%u[%u%s]+)%s+(.+)")
-    if not mutation then fishName = fullFishText end
+    -- Pisahkan mutation (ALL CAPS di depan) dan nama ikan
+    local mutation, fishName = fullFishText:match('^(%u+)%s+(.+)')
 
-    local rarityText = msg:match("with a (1 in [%d%.]+[KM]? chance!)")
+    if not mutation then
+        fishName = fullFishText
+    end
+
+    local rarityText = msg:match('with a (1 in [%d%.]+[KM]? chance!)')
     if not rarityText then return nil end
 
     return {
@@ -308,79 +312,54 @@ local function findRemoteEvent(name)
 end
 
 -- ================== PASANG LISTENER ==================
-local LastCatchMessage = ""
-
 local function setupListener()
     for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
         if remote:IsA("RemoteEvent") then
             remote.OnClientEvent:Connect(function(...)
-                    print("[DEBUG REMOTE]", remote:GetFullName())
                 local args = {...}
-
+                
                 for _, arg in ipairs(args) do
-                    if type(arg) == "string" and string.find(arg, "obtained") then
-                        
-                        -- Anti duplicate
-                        if arg == LastCatchMessage then
-                            return
-                        end
-                        LastCatchMessage = arg
-
+                    if type(arg) == "string" and string.find(arg, "obtained a") then
                         local parsed = parseFishMessage(arg)
-                        if not parsed then
-                            return
-                        end
-
-                        print("[Debug] Parsed fish:", parsed.fishName)
-
-                        -------------------------------------------------
-                        -- TIER LOOKUP SYSTEM (ROBUST)
-                        -------------------------------------------------
-                        local tier = nil
-                        local matchedFishName = nil
-                        local parsedNameLower = string.lower(parsed.fishName)
-
-                        -- 1️⃣ Exact match (case insensitive)
-                        for fishKey, fishInfo in pairs(FishData) do
-                            if string.lower(fishKey) == parsedNameLower then
-                                tier = fishInfo.tier
-                                matchedFishName = fishKey
-                                break
-                            end
-                        end
-
-                        -- 2️⃣ Partial match fallback
-                        if not tier then
-                            for fishKey, fishInfo in pairs(FishData) do
-                                local keyLower = string.lower(fishKey)
-
-                                if string.find(parsedNameLower, keyLower, 1, true)
-                                or string.find(keyLower, parsedNameLower, 1, true) then
-                                    tier = fishInfo.tier
-                                    matchedFishName = fishKey
-                                    break
+                        
+                        if parsed then
+                            -- Debug: print all parsed data
+                            print("[Debug] Parsed fish:", parsed.fishName)
+                            
+                            -- Fix: Look up fish in FishData with exact or partial match
+                            local tier = nil
+                            local matchedFishName = nil
+                            
+                            -- Try exact match first
+                            if FishData[parsed.fishName] then
+                                tier = FishData[parsed.fishName].tier
+                                matchedFishName = parsed.fishName
+                            else
+                                -- Try partial match (fish name contains the key)
+                                for fishKey, fishInfo in pairs(FishData) do
+                                    if string.find(parsed.fishName, fishKey) or string.find(fishKey, parsed.fishName) then
+                                        tier = fishInfo.tier
+                                        matchedFishName = fishKey
+                                        break
+                                    end
                                 end
                             end
-                        end
-
-                        print("[Debug] Matched:", matchedFishName, "Tier:", tier)
-
-                        local requiredTier = TIER[SelectedFilter]
-
-                        -------------------------------------------------
-                        -- SEND LOGIC
-                        -------------------------------------------------
-                        if tier and requiredTier and tier == requiredTier then
-                            print("[✓] Kirim notifikasi:", parsed.fishName)
-                            sendNotification(parsed)
-
-                        elseif not matchedFishName then
-                            -- Fallback jika ikan tidak ada di database
-                            print("[✓] Kirim notifikasi (fallback):", parsed.fishName)
-                            sendNotification(parsed)
-
-                        else
-                            print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
+                            
+                            print("[Debug] Matched fish:", matchedFishName, "Tier:", tier)
+                            
+                            local requiredTier = TIER[SelectedFilter]
+                            
+                            -- Send notification if tier matches or if fish not found in database (fallback)
+                            if tier and tier == requiredTier then
+                                print("[✓] Kirim notifikasi:", parsed.fishName)
+                                sendNotification(parsed)
+                            elseif not matchedFishName then
+                                -- Fish not found in database, send notification anyway as fallback
+                                print("[✓] Kirim notifikasi (fallback):", parsed.fishName)
+                                sendNotification(parsed)
+                            else
+                                print("[x] Tier tidak cocok. Ditangkap:", tier, "Dibutuhkan:", requiredTier)
+                            end
                         end
                     end
                 end
@@ -388,7 +367,7 @@ local function setupListener()
         end
     end
 
-    print("[✓] Listener FINAL terpasang (Fish It mode)")
+    print("[✓] Listener universal terpasang (Fish It mode)")
 end
 
 -- ================== GUI DENGAN FILTER ==================
