@@ -329,7 +329,7 @@ local function setupListener()
                 local args = {...}
 
                 for _, arg in ipairs(args) do
-                    if type(arg) == "string" and string.find(arg, "obtained an?", 1, true) then
+                    if type(arg) == "string" and string.find(arg, "obtained", 1, true) then
 
                         local parsed = parseFishMessage(arg)
                         if not parsed then return end
