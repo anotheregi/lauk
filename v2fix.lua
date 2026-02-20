@@ -102,46 +102,32 @@ local function parseFishMessage(message)
     -- Strip HTML tags
     message = string.gsub(message, "<.->", "")
 
-    -- Pastikan ini pesan catch
-    if not string.find(message, "obtained a", 1, true) then
+    -- Hilangkan newline (INI YANG PENTING)
+    message = string.gsub(message, "\n", " ")
+
+    -- Rapikan multiple spaces
+    message = string.gsub(message, "%s+", " ")
+
+    if not string.find(message, "obtained", 1, true) then
         return nil
     end
 
-    -- Ambil player
-    local playerName = string.match(message, "^(.-) obtained a")
+    local playerName = string.match(message, "^(.-) obtained")
     if not playerName then return nil end
 
-    -- Ambil bagian tengah
-    local fishSection = string.match(message, "obtained a (.+) with a")
+    local fishSection = string.match(message, "obtained an? (.+) with a")
     if not fishSection then return nil end
 
-    -- Ambil chance
-    local chance = string.match(message, "with a (.+) chance!")
-    
-    -- Ambil weight
     local weight = string.match(fishSection, "%((.-)%)")
+    local chance = string.match(message, "with a (.+) chance!")
 
-    -- Hapus weight dari nama
     local fishName = string.gsub(fishSection, "%s*%b()", "")
-
-    -- Trim spasi
     fishName = string.gsub(fishName, "^%s+", "")
     fishName = string.gsub(fishName, "%s+$", "")
-
-    -- Extract mutation (kata pertama kapital semua)
-    local mutation = nil
-    local firstWord = string.match(fishName, "^(%S+)")
-    if firstWord and string.match(firstWord, "^[A-Z]+$") then
-        mutation = firstWord
-        fishName = string.gsub(fishName, "^"..mutation.."%s+", "")
-    end
-
-    print("Parsed SUCCESS:", fishName)
 
     return {
         playerName = playerName,
         fishName = fishName,
-        mutation = mutation,
         weight = weight,
         chance = chance
     }
@@ -343,7 +329,7 @@ local function setupListener()
                 local args = {...}
 
                 for _, arg in ipairs(args) do
-                    if type(arg) == "string" and string.find(arg, "obtained a", 1, true) then
+                    if type(arg) == "string" and string.find(arg, "obtained an?", 1, true) then
 
                         local parsed = parseFishMessage(arg)
                         if not parsed then return end
