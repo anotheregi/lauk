@@ -96,40 +96,25 @@ print("[FishNotifier] Total data ikan: " .. tableCount(FishData))
 
 -- ================== FUNGSI PARSING PESAN (REGEX DIPERBAIKI + SECRET SUPPORT) ==================
 local function parseFishMessage(message)
-
-    if not message then return nil end
-
-    -- Strip HTML tags
+    -- remove HTML tags
     message = string.gsub(message, "<.->", "")
-
-    -- Hilangkan newline (INI YANG PENTING)
-    message = string.gsub(message, "\n", " ")
-
-    -- Rapikan multiple spaces
+    -- unify spaces
     message = string.gsub(message, "%s+", " ")
 
-    if not string.find(message, "obtained", 1, true) then
+    local username = message:match("^(.-) obtained")
+    local fishPart = message:match("obtained an? (.+) with a")
+    local weight = fishPart and fishPart:match("%(([%d%.KM]+)kg%)")
+    local fishName = fishPart and fishPart:gsub("%s*%b()", "")
+
+    if not username or not fishName or not weight then
         return nil
     end
 
-    local playerName = string.match(message, "^(.-) obtained")
-    if not playerName then return nil end
-
-    local fishSection = string.match(message, "obtained an? (.+) with a")
-    if not fishSection then return nil end
-
-    local weight = string.match(fishSection, "%((.-)%)")
-    local chance = string.match(message, "with a (.+) chance!")
-
-    local fishName = string.gsub(fishSection, "%s*%b()", "")
-    fishName = string.gsub(fishName, "^%s+", "")
-    fishName = string.gsub(fishName, "%s+$", "")
-
     return {
-        playerName = playerName,
+        username = username,
         fishName = fishName,
         weight = weight,
-        chance = chance
+        rarityText = message:match("with a (1 in [%d%.]+[KM]? chance!)")
     }
 end
 -- ================== FUNGSI PENGIRIMAN WEBHOOK ==================
