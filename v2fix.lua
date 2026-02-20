@@ -95,59 +95,57 @@ FishData = scanFishData()
 print("[FishNotifier] Total data ikan: " .. tableCount(FishData))
 
 -- ================== FUNGSI PARSING PESAN (REGEX DIPERBAIKI + SECRET SUPPORT) ==================
-local function parseFishMessage(msg)
-    local username = msg:match('%[Server%]:</font></b> ([^%s]+) obtained')
-    if not username then return nil end
+local function parseFishMessage(message)
 
-    -- Ambil seluruh teks ikan + berat (escape parentheses in pattern)
-    local fullFishText, weightStr = msg:match('<b><font color="[^"]+">(.-) %(([%d%.]+)kg%)</font></b>')
-    if not fullFishText then return nil end
+    if not message then return nil end
 
-    local weight = tonumber(weightStr)
+    -- Strip HTML tags
+    message = string.gsub(message, "<.->", "")
 
-    -- Pisahkan mutation (ALL CAPS di depan) dan nama ikan
-    local mutation, fishName = fullFishText:match('^(%u+)%s+(.+)')
-
-    if not mutation then
-        fishName = fullFishText
+    -- Pastikan ini pesan catch
+    if not string.find(message, "obtained a", 1, true) then
+        return nil
     end
 
-    -- Coba beberapa pattern rarity (termasuk Secret fish)
-    local rarityText = nil
+    -- Ambil player
+    local playerName = string.match(message, "^(.-) obtained a")
+    if not playerName then return nil end
+
+    -- Ambil bagian tengah
+    local fishSection = string.match(message, "obtained a (.+) with a")
+    if not fishSection then return nil end
+
+    -- Ambil chance
+    local chance = string.match(message, "with a (.+) chance!")
     
-    -- Pattern 1: "with a 1 in X chance!" (Legendary/Mythic)
-    rarityText = msg:match('with a (1 in [%d%.]+[KM]? chance!)')
-    
-    -- Pattern 2: Secret fish mungkin pake format lain
-    if not rarityText then
-        rarityText = msg:match('with a (1 in [%d%.,]+[KM]? chance!)')
-    end
-    
-    -- Pattern 3: Coba cari "SECRET" dalam pesan
-    if not rarityText and string.find(msg, "SECRET", 1, true) then
-        rarityText = "SECRET FISH!"
-    end
-    
-    -- Pattern 4: Cari angka odds lain
-    if not rarityText then
-        rarityText = msg:match('(1 in [%d%.]+[KM]? chance)')
+    -- Ambil weight
+    local weight = string.match(fishSection, "%((.-)%)")
+
+    -- Hapus weight dari nama
+    local fishName = string.gsub(fishSection, "%s*%b()", "")
+
+    -- Trim spasi
+    fishName = string.gsub(fishName, "^%s+", "")
+    fishName = string.gsub(fishName, "%s+$", "")
+
+    -- Extract mutation (kata pertama kapital semua)
+    local mutation = nil
+    local firstWord = string.match(fishName, "^(%S+)")
+    if firstWord and string.match(firstWord, "^[A-Z]+$") then
+        mutation = firstWord
+        fishName = string.gsub(fishName, "^"..mutation.."%s+", "")
     end
 
-    if not rarityText then 
-        -- Debug: print raw message untuk lihat format Secret
-        warn("[FishNotifier Debug] Tidak menemukan rarity text. Pesan:", msg)
-        return nil 
-    end
+    print("Parsed SUCCESS:", fishName)
 
     return {
-        username = username,
+        playerName = playerName,
         fishName = fishName,
+        mutation = mutation,
         weight = weight,
-        rarityText = rarityText,
-        mutation = mutation
+        chance = chance
     }
 end
-
 -- ================== FUNGSI PENGIRIMAN WEBHOOK ==================
 local function sendDiscordWebhook(url, embedData, callback)
     local payload = {
