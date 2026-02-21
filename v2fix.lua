@@ -158,6 +158,7 @@ local function parseFishMessage(message)
         rarityText = rarityText
     }
 end
+
 -- ================== FUNGSI PENGIRIMAN WEBHOOK ==================
 local function sendDiscordWebhook(url, embedData, callback)
     local payload = {
