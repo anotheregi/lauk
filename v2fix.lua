@@ -96,25 +96,66 @@ print("[FishNotifier] Total data ikan: " .. tableCount(FishData))
 
 -- ================== FUNGSI PARSING PESAN (REGEX DIPERBAIKI + SECRET SUPPORT) ==================
 local function parseFishMessage(message)
-    -- remove HTML tags
+    if not message then return nil end
+
+    -- Hapus HTML tag
     message = string.gsub(message, "<.->", "")
-    -- unify spaces
+
+    -- Rapikan newline & spasi
+    message = string.gsub(message, "\n", " ")
     message = string.gsub(message, "%s+", " ")
 
-    local username = message:match("^(.-) obtained")
-    local fishPart = message:match("obtained an? (.+) with a")
-    local weight = fishPart and fishPart:match("%(([%d%.KM]+)kg%)")
-    local fishName = fishPart and fishPart:gsub("%s*%b()", "")
-
-    if not username or not fishName or not weight then
+    if not string.find(message, "obtained", 1, true) then
         return nil
     end
+
+    --------------------------------------------------
+    -- USERNAME (hapus [Server]: jika ada)
+    --------------------------------------------------
+    local username = message:match("^%[Server%]:%s*(.-)%s+obtained")
+                    or message:match("^(.-)%s+obtained")
+
+    if not username then return nil end
+
+    --------------------------------------------------
+    -- AMBIL BAGIAN IKAN
+    --------------------------------------------------
+    local fishSection = message:match("obtained an? (.+) with a")
+    if not fishSection then return nil end
+
+    --------------------------------------------------
+    -- WEIGHT
+    --------------------------------------------------
+    local weight = fishSection:match("%(([%d%.KM]+)%s*kg%)")
+
+    --------------------------------------------------
+    -- NAMA IKAN (hapus weight)
+    --------------------------------------------------
+    local fishName = fishSection:gsub("%s*%b()", "")
+    fishName = fishName:gsub("^%s+", ""):gsub("%s+$", "")
+
+    --------------------------------------------------
+    -- MUTATION (kata kapital di depan)
+    --------------------------------------------------
+    local mutation = nil
+    local firstWord = fishName:match("^(%S+)")
+
+    if firstWord and firstWord:match("^[A-Z]+$") then
+        mutation = firstWord
+        fishName = fishName:gsub("^"..mutation.."%s+", "")
+    end
+
+    --------------------------------------------------
+    -- RARITY TEXT
+    --------------------------------------------------
+    local rarityText = message:match("with a (1 in [%d%.]+[KM]? chance!)")
 
     return {
         username = username,
         fishName = fishName,
+        mutation = mutation,
         weight = weight,
-        rarityText = message:match("with a (1 in [%d%.]+[KM]? chance!)")
+        rarityText = rarityText
     }
 end
 -- ================== FUNGSI PENGIRIMAN WEBHOOK ==================
