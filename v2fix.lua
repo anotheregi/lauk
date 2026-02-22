@@ -7,7 +7,7 @@ local HttpService = game:GetService("HttpService")
 local Player = Players.LocalPlayer
 
 -- ================== KONFIGURASI ==================
-local WebhookURL = ""  -- Akan diisi lewat GUI
+local WebhookURL = "https://discord.com/api/webhooks/1473670936875110450/olHaAy0T-6QiSMPlF9r453D156ifqVLf3IFOZHWLacBInhVdBp9AYkBNr_VJuZb-nfFQ"  -- Akan diisi lewat GUI
 local NotifierEnabled = true
 local BotUsername = "Rayzer keren"
 local BotAvatarUrl = "https://i.imgur.com/3PuhVRE.png"
